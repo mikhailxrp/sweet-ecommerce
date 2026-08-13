@@ -9,9 +9,11 @@ declare(strict_types=1);
 
 return [
     'GET' => [
-        '/'         => ['HomeController', 'index'],
-        '/login'    => ['AuthController', 'showLogin'],
-        '/register' => ['AuthController', 'showRegister'],
+        '/'            => ['HomeController', 'index'],
+        '/login'       => ['AuthController', 'showLogin'],
+        '/register'    => ['AuthController', 'showRegister'],
+        '/admin'       => ['Admin\DashboardController', 'index'],
+        '/vendor-panel' => ['VendorPanelController', 'index'],
     ],
     'POST' => [
         '/login'    => ['AuthController', 'login'],

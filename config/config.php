@@ -24,3 +24,4 @@ define('APP_LOG_LEVEL', env('APP_LOG_LEVEL', 'error'));
 
 require_once ROOT_PATH . '/src/Core/Logger.php';
 require_once ROOT_PATH . '/src/Core/Database.php';
+require_once ROOT_PATH . '/src/Core/auth.php';
