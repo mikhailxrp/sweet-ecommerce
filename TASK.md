@@ -4,95 +4,105 @@
 Phase 0 — Фундамент
 
 ## Задача
-Собрать независимый layout админки на теме Fastkart (back-end):
-сайдбар + шапка, свой вендорный слой ассетов (свой Bootstrap,
-иконочные шрифты, ApexCharts), локализация. Любой admin-маршрут
-рендерится в этот layout с пустым `main`.
+Гость регистрируется как `customer`, входит и выходит. Сессия
+ротируется после входа, ошибки generic (не раскрывают существование
+email), есть rate-limit и CSRF. Формы — на shop-layout из Таска 2.
 
-Источник вёрстки: `example-template/back-end/index.html`.
+Источник вёрстки: `example-template/front-end/login.html` (секция
+`.log-in-section`: email + пароль) и `sign-up.html` (имя + email + пароль).
 
 ## Scope — что трогаем
 
-**Вендорный слой (перенос AS IS в отдельную ветку `public/assets/vendor/admin/`):**
-- [ ] `public/assets/vendor/admin/css/` — из `<head>` index.html:
-      `vendors/bootstrap.css`, `vendors/font-awesome.css`,
-      `vendors/themify.css`, `vendors/feather-icon.css`,
-      `vendors/scrollbar.css`, `vendors/animate.css`, `linearicon.css`,
-      `remixicon.css`, `ratio.css`, `style.css` (+ зависимые из `vendors/`)
-- [ ] `public/assets/vendor/admin/js/` — `jquery-3.6.0.min.js`,
-      `bootstrap/bootstrap.bundle.min.js`, `icons/feather-icon/feather.min.js`
-      + `feather-icon.js`, `scrollbar/simplebar.js` + `custom.js`,
-      `config.js`, `tooltip-init.js`, `sidebar-menu.js`, `sidebareffect.js`,
-      `script.js`, **+ ApexCharts ядро** `chart/apex-chart/apex-chart.js`
-      + `moment.min.js` (DoD требует «ApexCharts подключён»; init-скрипты
-      графиков — не здесь, см. out of scope)
-- [ ] `public/assets/vendor/admin/fonts/` — иконочные шрифты темы
-      (linearicon / font-awesome / themify / remixicon / feather) в
-      `.woff2/.woff` + локальный **Public Sans** (в макете он с Google
-      CDN) с `@font-face`. Из всех `@font-face` вычищаются `.eot/.ttf/.svg`
-- [ ] `public/assets/vendor/admin/images/` — только логотип шапки
-      (`logo/1.png`, `logo/1-white.png`) и `favicon.png`
+**Модель:**
+- [ ] `src/Models/UserModel.php` — создать: `findByEmail(string): ?array`
+      (SELECT по email, возвращает строку с `password_hash`, `role`,
+      `is_active`), `createCustomer(string $name, string $email,
+      string $passwordHash): int` (INSERT `role='customer'`, возвращает
+      id), `emailExists(string): bool`. Только PDO prepared, возвращает
+      массивы; никакого HTML/редиректов.
 
-**Свой слой:**
-- [ ] `public/assets/css/admin.css` — создать:
-      `:root { --theme-color:#d99f46; --theme-color-rgb:217,159,70 }`,
-      BEM-переопределения поверх темы админки
-- [ ] `public/assets/js/admin.js` — создать: ES-модуль, точка входа админки
+**Core:**
+- [ ] `src/Core/auth.php` — создать: `currentUser(): ?array` (грузит
+      юзера по `$_SESSION['user_id']`, кэширует на запрос),
+      `loginUser(array $user): void` (`regenerateSession()` + пишет
+      `user_id`/`role` в сессию), `logoutUser(): void` (чистит сессию),
+      плюс чистые валидаторы `validateRegistration(array): array` /
+      `validateLogin(array): array` (возвращают массив ошибок; без БД,
+      без HTTP — под unit-тест). `isAuthenticated()` / `normalizeUserId()`
+      уже есть в `functions.php` — не дублируем, переиспользуем.
+
+**Контроллер:**
+- [ ] `src/Controllers/AuthController.php` — создать: `showLogin`,
+      `login`, `showRegister`, `register`, `logout`. Все POST:
+      `requireCsrf()` → валидация → Model → `redirect()`.
+      `login`: `tooManyAttempts('login',5,60)` до обработки,
+      `hitRateLimit('login')` + `logWarning()` на неудаче,
+      `clearRateLimit('login')` + `loginUser()` на успехе. Проверка
+      пароля — `password_verify()` здесь (Model остаётся SQL-only).
+      Успех входа/регистрации → `redirect('/')`.
 
 **Представление:**
-- [ ] `src/Views/admin/layout.php` — создать: HTML-скелет (`<head>` с
-      локальными admin-CSS и шрифтами, `page-wrapper`, `<main>` с
-      `$content`, подключение admin-JS + `admin.js`)
-- [ ] `src/Views/admin/components/sidebar.php` — создать: сайдбар из
-      index.html, локализованный. Полное меню админки; активный пункт
-      **Дашборд → `/admin/_preview`** (перецепится на `/admin` в Таске 5),
-      остальные пункты — `href="#"` (оживают по мере фаз)
-- [ ] `src/Views/admin/components/header.php` — создать: шапка из
-      index.html, локализованная
+- [ ] `src/Views/shop/auth/login.php` — создать: секция `.log-in-section`
+      из `login.html`, локализована, `<form action="/login" method="post">`
+      + `csrfField()`, вывод ошибок и старого email через `e()`.
+      Подключает shop-layout (буфер `$content`).
+- [ ] `src/Views/shop/auth/register.php` — создать: из `sign-up.html`,
+      поля имя/email/пароль (без подтверждения пароля, как в макете),
+      `action="/register"`, CSRF, ошибки/старый ввод через `e()`.
 
-**Временное — для ручной проверки (удаляется/заменяется в Таске 5):**
-- [ ] `config/routes.php` — временный роут `GET /admin/_preview` →
-      тестовый рендер admin-layout (в Таске 5 появится настоящий `GET /admin`)
-- [ ] `src/Views/admin/_preview.php` — временная пустая admin-страница
-      (буферизует `$content`, подключает `layout.php`); в Таске 5
-      заменяется на `dashboard.php`
+**Конфиг:**
+- [ ] `config/config.php` — изменить: добавить
+      `require_once .../src/Core/auth.php`.
+
+**Тест:**
+- [ ] `tests/Unit/AuthValidationTest.php` — создать: кейсы на
+      `validateRegistration` / `validateLogin` (пустые поля, кривой
+      email, пароль < 8 символов) — `composer test`.
+
+*(`config/routes.php` не трогаем — маршруты `GET/POST /login`,
+`GET/POST /register`, `POST /logout` уже прописаны.)*
 
 ## Out of scope — не трогаем
-- Контент дашборда: KPI-карточки, графики ApexCharts (init-скрипты
-  `apex-chart1.js`, `chart-custom1.js`, `stock-prices.js`), vector-map,
-  slick-карусели, таблицы DataTables — наполняется в Фазе 5; здесь `main`
-  пустой
-- Демо-заглушки макета: `customizer.js` + виджет темы, `notify/*`
-  (тосты форм), `select2`, `dropzone`, `datatables`, `daterange-picker`,
-  typeahead — переносятся со своими страницами в следующих фазах
-- `back-end/assets/ajax/*.php` — демо-заглушки DataTables, не переносим
-- Layout витрины (Таск 2 — завершён), общий слой представления shop/admin
-  не заводим
-- Настоящий роут `/admin`, гейт ролей, 403, дашборд-контроллер — Таск 5
-- Авторизация, формы `login` / `register` — Таск 4
+- Гейт ролей, 403, редирект `customer` из `/admin` и `/vendor-panel`,
+  дашборды — Таск 5
+- Отдельный вход в админку (`/admin/login`) — Фаза 5
+- Восстановление/сброс пароля, OTP (`forgot.html`, `otp.html`, таблица
+  `password_resets`) — позже
+- Welcome-email после регистрации (PHPMailer / `src/Services/`) —
+  почтовый слой в этом таске не строим
+- «Запомнить меня» (persistent-токены), редактирование профиля, аватар
+- Правка `functions.php` — `redirectIfAuthenticated()` с его `/dashboard`
+  оставляем Таску 5 (роле-зависимые редиректы там)
+- Личный кабинет покупателя — Фаза 4
 
 ## Definition of Done
-- [ ] Тестовая admin-страница (`GET /admin/_preview`) открывается:
-      рендерится layout админки в теме Fastkart (сайдбар + пустой `main`
-      + шапка)
-- [ ] Сайдбар и шапка: `lang="ru"`, `dir` убран, весь текст переведён
-      на русский
-- [ ] Все CSS/JS/шрифты локальные — в Network ноль 404 и ноль запросов
-      к `googleapis` / `gstatic` / любому CDN (Public Sans self-hosted)
-- [ ] `@font-face` без `.eot/.ttf/.svg` (только `.woff2/.woff`)
-- [ ] Консоль браузера чистая (нет JS-ошибок)
-- [ ] Витрина и админка используют разные наборы ассетов — admin-layout
-      не подключает ничего из `vendor/` витрины (общего CSS нет)
-- [ ] Корректно на 320px (mobile-first)
-- [ ] `storage/logs/app.log` без PHP-ошибок и warnings
-- [ ] Вывод динамики в шапке и сайдбаре через `e()`
-- [ ] Проверить `.docs/dod-global.md` (юнит-тест не требуется — это
-      Views/HTML без чистой логики)
+- [ ] Регистрация создаёт `users` с `role='customer'`, пароль через
+      `password_hash()` (валидация min 8 до хэша); запись реально
+      появляется в БД
+- [ ] Повторная регистрация на занятый email — generic-ошибка, не
+      «email уже существует» (FR-AUTH-03)
+- [ ] Вход верным паролем: `regenerateSession()`, `clearRateLimit('login')`,
+      сессия содержит `user_id`; редирект на `/`
+- [ ] Вход неверным паролем / несуществующим email: одинаковое
+      «Неверный email или пароль»; `hitRateLimit` + `logWarning()`
+- [ ] После 5 быстрых неудач за 60 с — блок попыток (`tooManyAttempts`),
+      проверить серией быстрых запросов
+- [ ] Заблокированный аккаунт (`is_active=0`) — тоже generic-ошибка,
+      вход не даётся
+- [ ] Обе формы: `csrfField()` в HTML и `requireCsrf()` в контроллере до
+      обращения к Model
+- [ ] Выход чистит сессию, редирект на `/`; повторный заход — гость
+- [ ] Пустые/кривые поля: форма не отправляется, поля с ошибкой
+      подсвечены, старый email сохранён (через `e()`)
+- [ ] `composer test` зелёный (unit на валидаторы)
+- [ ] Ассеты локальные, консоль браузера чистая, `storage/logs/app.log`
+      без ошибок и warnings, корректно на 320px
+- [ ] Проверить `.docs/dod-global.md`
 
 ## Важные правила
 - Следовать `CLAUDE.md`
+- Models — только SQL через PDO prepared; POST → redirect; вывод в
+  Views через `e()`
 - Работать только в рамках Scope
 - Не менять файлы вне Scope
 - Не рефакторить попутно
-- Вендорные файлы в `public/assets/vendor/admin/` — AS IS, не
-  форматировать и не чинить

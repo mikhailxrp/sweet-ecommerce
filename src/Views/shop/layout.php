@@ -34,6 +34,17 @@ $content = $content ?? '';
 </head>
 <body class="theme-color-1">
 
+    <!-- Прелоадер темы. Его удаляет script.js по classList после загрузки
+         страницы; без этого элемента loader-код темы падает с TypeError. -->
+    <div class="fullpage-loader">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+
     <?php require __DIR__ . '/components/header.php'; ?>
 
     <main>

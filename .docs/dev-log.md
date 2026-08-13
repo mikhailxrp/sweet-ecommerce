@@ -134,3 +134,68 @@ Fastkart.
 внешний вид, 320px). Затем Фаза 0, Таск 4 — авторизация.
 
 ---
+
+**Дата:** 13.08.2026
+**Что сделано:** Фаза 0, Таск 4 — авторизация (регистрация, вход, выход).
+
+- `src/Models/UserModel.php` — функции `findByEmail`, `findById`,
+  `emailExists`, `createCustomer` (PDO prepared, плоские массивы, только
+  SQL). Первая модель проекта — контроллер подключает её через
+  `require_once` и зовёт квалифицированно (`\App\Models\...`), т.к.
+  автозагрузчик классовый, а модели по правилам — функции.
+- `src/Core/auth.php` — `currentUser` (кэш на запрос), `loginUser`
+  (через `regenerateSession`), `logoutUser` (очистка сессии + куки +
+  destroy), чистые валидаторы `validateRegistration`/`validateLogin` и
+  PRG-хелперы `flashFormState`/`takeFormState`. `require_once` добавлен
+  в `config.php`. `isAuthenticated`/`normalizeUserId` не дублируются —
+  переиспользованы из `functions.php`.
+- `src/Controllers/AuthController.php` — `showLogin/login/showRegister/
+  register/logout`. Все POST: `requireCsrf()` → валидация → Model →
+  `redirect()` (PRG). Регистрация создаёт `role='customer'` и сразу
+  логинит; вход — `tooManyAttempts('login',5,60)` + `hitRateLimit`/
+  `clearRateLimit` + `logWarning` на неудаче; успех/уже-авторизован →
+  `/`.
+- Вьюхи `src/Views/shop/auth/{login,register}.php` на shop-layout из
+  Таска 2 (локализованы, `csrfField()`, подсветка ошибок `is-invalid`,
+  сохранение прошлого ввода через `e()`).
+- Юнит-тест `tests/Unit/AuthValidationTest.php` (8 кейсов на валидаторы);
+  `composer test` — 26/26 зелёный.
+- Проверено встроенным сервером (полный прогон curl + cookie jar):
+  регистрация создаёт `customer` (`password_verify=1`), авто-логин и
+  редирект на `/`; верный вход → `/`; неверный → generic «Неверный
+  email или пароль», после 5 попыток — «Слишком много попыток»;
+  повторный email → generic (без «существует»); короткий пароль →
+  ошибка поля + сохранён email; выход → `/`, без CSRF → 419. Тестовые
+  строки из БД удалены.
+
+Решения и отклонения:
+- Проверка пароля вынесена из модели в контроллер (`password_verify`) —
+  модель осталась SQL-only. Для защиты от перебора по времени ответа
+  `password_verify` прогоняется и при отсутствии юзера (константный
+  хэш-заглушка), а `is_active=0` даёт тот же generic-ответ.
+- POST завершается redirect (правило проекта): ошибки/ввод переносятся
+  через сессию (`flashFormState`/`takeFormState`), а не рендерятся
+  прямо из POST.
+- Редирект после входа/регистрации — на `/` (у покупателя нет кабинета
+  в Фазе 0); `functions.php`/`redirectIfAuthenticated` не трогали —
+  роле-зависимые редиректы в Таске 5.
+- Соц-вход, «запомнить меня», чекбокс согласия, «забыли пароль», welcome-
+  email — не в скоупе (вне Фазы 0 / позже). UI-кнопки выхода в витрине
+  нет — эндпоинт `/logout` готов, триггер появится с аккаунт-меню в
+  Фазе 4.
+
+**Что следующее:** ручная проверка DoD Таск 4 в браузере (формы, 320px,
+консоль). Затем Фаза 0, Таск 5 — гейт ролей, 403, дашборд-заглушка.
+
+Правка вне таска (найдено при ручной проверке входа):
+- В консоли витрины падал `TypeError: Cannot read properties of
+  undefined (reading 'classList')` в `vendor/js/script.js:320`. Причина
+  — при сборке shop-layout (Таск 2) не был перенесён прелоадер темы
+  `.fullpage-loader`, а loader-код темы берёт этот элемент по классу.
+  Vendor-файл не трогаем (AS IS) — добавили недостающую разметку
+  прелоадера (6 `<span>`) в `src/Views/shop/layout.php`. Стили
+  `.fullpage-loader`/`--invisible` уже есть в `style.css`; ошибка ушла,
+  прелоадер сам скрывается после загрузки. Затрагивает все страницы
+  витрины, включая формы входа/регистрации.
+
+---
