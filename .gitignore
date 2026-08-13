@@ -1,0 +1,19 @@
+.env
+storage/logs/*.log
+storage/cache/*
+!storage/cache/rate-limit/
+storage/cache/rate-limit/*
+!storage/cache/rate-limit/.gitkeep
+storage/temp/*
+.DS_Store
+Thumbs.db
+/vendor/
+/.phpunit.cache/
+/.phpunit.result.cache
+
+# Срез макета Fastkart — read-only референс, на прод не деплоится (PRD §13, вопрос №6)
+/example-template/
+
+# Загруженный контент — фото товаров и т.п., в репозитории не хранится
+public/uploads/products/*
+!public/uploads/products/.gitkeep
