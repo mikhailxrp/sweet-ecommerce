@@ -199,3 +199,46 @@ Fastkart.
   витрины, включая формы входа/регистрации.
 
 ---
+
+**Дата:** 14.08.2026
+**Что сделано:** Фаза 0, Таск 5 — гейт ролей, 403, дашборд-заглушка.
+**Фаза 0 завершена.**
+
+- `src/Core/auth.php` — `requireRole(string $role)`: гость →
+  `redirect('/login')`; роль ≠ требуемой → `http_response_code(403)` +
+  `render('errors/403')` + `exit`. Строгая проверка одной роли по
+  `$_SESSION['user_role']`.
+- `src/Controllers/Admin/DashboardController.php` — `index()` →
+  `requireRole('admin')` → `render('admin/dashboard')`; вьюха
+  `src/Views/admin/dashboard.php` (заглушка на admin-layout).
+- `src/Controllers/VendorPanelController.php` — `index()` →
+  `requireRole('vendor')` → `render('shop/vendor-panel')`; вьюха-
+  заглушка `src/Views/shop/vendor-panel.php` (кабинет кондитера — Фаза 7).
+- `src/Views/errors/403.php` — страница «Доступ запрещён» на shop-layout.
+- `config/routes.php` — убран временный `/admin/_preview`, добавлены
+  `GET /admin` → `Admin\DashboardController` и `GET /vendor-panel` →
+  `VendorPanelController`.
+- Удалены временные `AdminPreviewController.php` и `_preview.php` (Таск 3).
+  В шапке/сайдбаре админки ссылки `/admin/_preview` → `/admin`.
+- `tests/Unit/RouterTest.php` — кейсы на реальный `config/routes.php`:
+  `/admin` и `/vendor-panel` резолвятся в нужные хендлеры, `/admin/_preview`
+  больше не матчится. `composer test` — 28/28 зелёный.
+- Проверено встроенным сервером (полная матрица): гость на `/admin` и
+  `/vendor-panel` → 302 на `/login`; `customer` → 403 (страница
+  «Доступ запрещён»); админ → `/admin` 200 (дашборд), `/vendor-panel`
+  403 (строгая роль — админ не vendor); `/` → 200; `/admin/_preview` →
+  404. Тестовый customer удалён, новых ошибок в `app.log` нет.
+
+Решения:
+- Проверка строго по одной роли: админ на `/vendor-panel` тоже получает
+  403 (управление кондитерами — через `/admin`, а не их кабинет).
+- Редирект после логина оставлен на `/` (Таск 4); роле-зависимого
+  авто-редиректа в кабинет не вводили — не требуется DoD фазы.
+- `redirectIfAuthenticated()` (ведёт на `/dashboard`) остался
+  неиспользуемым мёртвым хелпером — по правилу «предсуществующий
+  мёртвый код не трогаем», только упоминаю.
+
+**Что следующее:** ручная проверка DoD Таск 5 в браузере (403/дашборд,
+консоль, 320px). Фаза 0 закрыта — дальше Фаза 1 «Каталог».
+
+---

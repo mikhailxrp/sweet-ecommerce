@@ -9,13 +9,11 @@ declare(strict_types=1);
 
 return [
     'GET' => [
-        '/'         => ['HomeController', 'index'],
-        '/login'    => ['AuthController', 'showLogin'],
-        '/register' => ['AuthController', 'showRegister'],
-
-        // ВРЕМЕННО (Таск 3): проверка layout админки. Удаляется в Таске 5
-        // вместе с AdminPreviewController — там появится настоящий GET /admin.
-        '/admin/_preview' => ['AdminPreviewController', 'index'],
+        '/'            => ['HomeController', 'index'],
+        '/login'       => ['AuthController', 'showLogin'],
+        '/register'    => ['AuthController', 'showRegister'],
+        '/admin'       => ['Admin\DashboardController', 'index'],
+        '/vendor-panel' => ['VendorPanelController', 'index'],
     ],
     'POST' => [
         '/login'    => ['AuthController', 'login'],

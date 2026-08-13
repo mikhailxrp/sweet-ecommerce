@@ -4,105 +4,87 @@
 Phase 0 — Фундамент
 
 ## Задача
-Гость регистрируется как `customer`, входит и выходит. Сессия
-ротируется после входа, ошибки generic (не раскрывают существование
-email), есть rate-limit и CSRF. Формы — на shop-layout из Таска 2.
-
-Источник вёрстки: `example-template/front-end/login.html` (секция
-`.log-in-section`: email + пароль) и `sign-up.html` (имя + email + пароль).
+`customer`/гость не попадают в `/admin` и `/vendor-panel` (гость →
+`/login`, чужая роль → 403); админ открывает `/admin` с дашбордом-
+заглушкой в теме; главная `/` — пустая витрина. Временный
+`/admin/_preview` из Таска 3 заменяется на настоящий `/admin`.
 
 ## Scope — что трогаем
 
-**Модель:**
-- [ ] `src/Models/UserModel.php` — создать: `findByEmail(string): ?array`
-      (SELECT по email, возвращает строку с `password_hash`, `role`,
-      `is_active`), `createCustomer(string $name, string $email,
-      string $passwordHash): int` (INSERT `role='customer'`, возвращает
-      id), `emailExists(string): bool`. Только PDO prepared, возвращает
-      массивы; никакого HTML/редиректов.
+**Гейт:**
+- [ ] `src/Core/auth.php` — добавить `requireRole(string $role)`: гость →
+      `redirect('/login')`; роль ≠ требуемой → `http_response_code(403)`
+      + `render('errors/403')` + `exit`. Читает `$_SESSION['user_role']`
+      (кладёт `loginUser`). Строгая проверка одной роли.
 
-**Core:**
-- [ ] `src/Core/auth.php` — создать: `currentUser(): ?array` (грузит
-      юзера по `$_SESSION['user_id']`, кэширует на запрос),
-      `loginUser(array $user): void` (`regenerateSession()` + пишет
-      `user_id`/`role` в сессию), `logoutUser(): void` (чистит сессию),
-      плюс чистые валидаторы `validateRegistration(array): array` /
-      `validateLogin(array): array` (возвращают массив ошибок; без БД,
-      без HTTP — под unit-тест). `isAuthenticated()` / `normalizeUserId()`
-      уже есть в `functions.php` — не дублируем, переиспользуем.
+**Админка (замена временной заглушки на настоящую):**
+- [ ] `src/Controllers/Admin/DashboardController.php` — создать:
+      `index()` → `requireRole('admin')` → `render('admin/dashboard')`
+- [ ] `src/Views/admin/dashboard.php` — создать: дашборд-заглушка на
+      admin-layout (контент из нынешнего `_preview.php`, заголовок
+      «Дашборд»)
+- [ ] `src/Views/admin/components/header.php` — изменить: 2 ссылки
+      логотипа `/admin/_preview` → `/admin`
+- [ ] `src/Views/admin/components/sidebar.php` — изменить: ссылки
+      логотипа/монограммы и пункт «Дашборд» `/admin/_preview` → `/admin`;
+      поправить комментарий
+- [ ] удалить `src/Controllers/AdminPreviewController.php` и
+      `src/Views/admin/_preview.php` (временные из Таска 3)
 
-**Контроллер:**
-- [ ] `src/Controllers/AuthController.php` — создать: `showLogin`,
-      `login`, `showRegister`, `register`, `logout`. Все POST:
-      `requireCsrf()` → валидация → Model → `redirect()`.
-      `login`: `tooManyAttempts('login',5,60)` до обработки,
-      `hitRateLimit('login')` + `logWarning()` на неудаче,
-      `clearRateLimit('login')` + `loginUser()` на успехе. Проверка
-      пароля — `password_verify()` здесь (Model остаётся SQL-only).
-      Успех входа/регистрации → `redirect('/')`.
+**Гейт кондитера (заглушка-guard):**
+- [ ] `src/Controllers/VendorPanelController.php` — создать: `index()` →
+      `requireRole('vendor')` → `render('shop/vendor-panel')`
+- [ ] `src/Views/shop/vendor-panel.php` — создать: минимальная заглушка
+      «Раздел в разработке» на shop-layout (кабинет кондитера — Фаза 7)
 
-**Представление:**
-- [ ] `src/Views/shop/auth/login.php` — создать: секция `.log-in-section`
-      из `login.html`, локализована, `<form action="/login" method="post">`
-      + `csrfField()`, вывод ошибок и старого email через `e()`.
-      Подключает shop-layout (буфер `$content`).
-- [ ] `src/Views/shop/auth/register.php` — создать: из `sign-up.html`,
-      поля имя/email/пароль (без подтверждения пароля, как в макете),
-      `action="/register"`, CSRF, ошибки/старый ввод через `e()`.
+**403:**
+- [ ] `src/Views/errors/403.php` — создать: страница «Доступ запрещён»
+      на shop-layout + ссылка на `/`
 
-**Конфиг:**
-- [ ] `config/config.php` — изменить: добавить
-      `require_once .../src/Core/auth.php`.
+**Маршруты:**
+- [ ] `config/routes.php` — убрать `/admin/_preview`; добавить
+      `GET /admin` → `['Admin\DashboardController','index']`,
+      `GET /vendor-panel` → `['VendorPanelController','index']`
+
+**Витрина (уже готово из Таска 2 — проверить, правок не требуется):**
+- [ ] `src/Controllers/HomeController.php` + `src/Views/shop/home.php` —
+      уже отдают пустую витрину; не меняем
 
 **Тест:**
-- [ ] `tests/Unit/AuthValidationTest.php` — создать: кейсы на
-      `validateRegistration` / `validateLogin` (пустые поля, кривой
-      email, пароль < 8 символов) — `composer test`.
-
-*(`config/routes.php` не трогаем — маршруты `GET/POST /login`,
-`GET/POST /register`, `POST /logout` уже прописаны.)*
+- [ ] `tests/Unit/RouterTest.php` — изменить: добавить кейсы, грузящие
+      реальный `config/routes.php` (`loadRoutes`): `GET /admin` и
+      `GET /vendor-panel` резолвятся в нужные хендлеры, `/admin/_preview`
+      больше не матчится
 
 ## Out of scope — не трогаем
-- Гейт ролей, 403, редирект `customer` из `/admin` и `/vendor-panel`,
-  дашборды — Таск 5
-- Отдельный вход в админку (`/admin/login`) — Фаза 5
-- Восстановление/сброс пароля, OTP (`forgot.html`, `otp.html`, таблица
-  `password_resets`) — позже
-- Welcome-email после регистрации (PHPMailer / `src/Services/`) —
-  почтовый слой в этом таске не строим
-- «Запомнить меня» (persistent-токены), редактирование профиля, аватар
-- Правка `functions.php` — `redirectIfAuthenticated()` с его `/dashboard`
-  оставляем Таску 5 (роле-зависимые редиректы там)
-- Личный кабинет покупателя — Фаза 4
+- Наполнение дашборда (KPI, графики ApexCharts, таблицы) — Фаза 5
+- Реальный кабинет кондитера (`seller-dashboard`, свой layout) — Фаза 7
+- Отдельный вход в админку `/admin/login` — Фаза 5
+- Личный кабинет покупателя, редирект после логина по роли — оставляем
+  `/` (Таск 4)
+- `redirectIfAuthenticated()` в `functions.php` (ведёт на `/dashboard`) —
+  сейчас не используется (Таск 4 редиректит на `/` напрямую);
+  предсуществующий мёртвый хелпер, не трогаю, только упоминаю
+- 404-страница темы (`404.html`) — отдельно, не в этом таске
 
 ## Definition of Done
-- [ ] Регистрация создаёт `users` с `role='customer'`, пароль через
-      `password_hash()` (валидация min 8 до хэша); запись реально
-      появляется в БД
-- [ ] Повторная регистрация на занятый email — generic-ошибка, не
-      «email уже существует» (FR-AUTH-03)
-- [ ] Вход верным паролем: `regenerateSession()`, `clearRateLimit('login')`,
-      сессия содержит `user_id`; редирект на `/`
-- [ ] Вход неверным паролем / несуществующим email: одинаковое
-      «Неверный email или пароль»; `hitRateLimit` + `logWarning()`
-- [ ] После 5 быстрых неудач за 60 с — блок попыток (`tooManyAttempts`),
-      проверить серией быстрых запросов
-- [ ] Заблокированный аккаунт (`is_active=0`) — тоже generic-ошибка,
-      вход не даётся
-- [ ] Обе формы: `csrfField()` в HTML и `requireCsrf()` в контроллере до
-      обращения к Model
-- [ ] Выход чистит сессию, редирект на `/`; повторный заход — гость
-- [ ] Пустые/кривые поля: форма не отправляется, поля с ошибкой
-      подсвечены, старый email сохранён (через `e()`)
-- [ ] `composer test` зелёный (unit на валидаторы)
+- [ ] Гость на `/admin` и `/vendor-panel` → редирект на `/login`
+- [ ] Авторизованный `customer` на `/admin` и `/vendor-panel` → 403
+      (страница «Доступ запрещён», HTTP 403)
+- [ ] Админ на `/admin` → дашборд-заглушка в admin-теме (200)
+- [ ] Админ на `/vendor-panel` → 403 (он не `vendor`) — проверка строгая
+      по роли
+- [ ] Главная `/` открывается пустой витриной (200)
+- [ ] Временный `/admin/_preview` больше не отвечает (404), файлы-
+      заглушки удалены
+- [ ] `composer test` зелёный (новые кейсы RouterTest на `/admin`,
+      `/vendor-panel`)
 - [ ] Ассеты локальные, консоль браузера чистая, `storage/logs/app.log`
       без ошибок и warnings, корректно на 320px
 - [ ] Проверить `.docs/dod-global.md`
 
 ## Важные правила
 - Следовать `CLAUDE.md`
-- Models — только SQL через PDO prepared; POST → redirect; вывод в
-  Views через `e()`
 - Работать только в рамках Scope
 - Не менять файлы вне Scope
 - Не рефакторить попутно

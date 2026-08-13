@@ -76,6 +76,27 @@ function logoutUser(): void
     session_destroy();
 }
 
+/**
+ * Гейт доступа по роли. Гость → redirect на /login; авторизованный с другой
+ * ролью → 403 (страница «Доступ запрещён»). Строгая проверка одной роли:
+ * `requireRole('admin')` не пускает vendor/customer, `requireRole('vendor')`
+ * не пускает admin/customer. Основной гейт — по `users.role` (в сессии
+ * `user_role`), а не по факту логина.
+ */
+function requireRole(string $role): void
+{
+    if (!isAuthenticated()) {
+        redirect('/login');
+    }
+
+    ensureSessionStarted();
+    if (($_SESSION['user_role'] ?? null) !== $role) {
+        http_response_code(403);
+        render('errors/403');
+        exit;
+    }
+}
+
 // ─── Валидаторы форм (чистая логика, без БД и без HTTP — под unit-тест) ────
 
 /**

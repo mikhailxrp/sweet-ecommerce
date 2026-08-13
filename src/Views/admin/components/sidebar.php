@@ -5,9 +5,9 @@ declare(strict_types=1);
 /**
  * Сайдбар админки (.sidebar-wrapper) темы Fastkart, локализованный.
  *
- * Фаза 0: реальный маршрут только «Дашборд» (временно → /admin/_preview,
- * перецепится на /admin в Таске 5). Остальные пункты меню сохранены из
- * макета как каркас разделов админки и ведут на «#» — оживают по мере фаз.
+ * Фаза 0: реальный маршрут только «Дашборд» (/admin). Остальные пункты меню
+ * сохранены из макета как каркас разделов админки и ведут на «#» — оживают
+ * по мере фаз.
  * Пункты вырезанных из скоупа фич (мультиязычность/валюты) не переносятся.
  */
 ?>
@@ -15,7 +15,7 @@ declare(strict_types=1);
     <div id="sidebarEffect"></div>
     <div>
         <div class="logo-wrapper logo-wrapper-center">
-            <a class="admin-logo" href="/admin/_preview">Сдоба</a>
+            <a class="admin-logo" href="/admin">Сдоба</a>
             <div class="back-btn">
                 <i class="fa fa-angle-left"></i>
             </div>
@@ -24,7 +24,7 @@ declare(strict_types=1);
             </div>
         </div>
         <div class="logo-icon-wrapper">
-            <a class="admin-logo admin-logo--icon" href="/admin/_preview">С</a>
+            <a class="admin-logo admin-logo--icon" href="/admin">С</a>
         </div>
         <nav class="sidebar-main">
             <div class="left-arrow" id="left-arrow">
@@ -36,7 +36,7 @@ declare(strict_types=1);
                     <li class="back-btn"></li>
 
                     <li class="sidebar-list">
-                        <a class="sidebar-link sidebar-title link-nav" href="/admin/_preview">
+                        <a class="sidebar-link sidebar-title link-nav" href="/admin">
                             <i class="ri-home-line"></i>
                             <span>Дашборд</span>
                         </a>

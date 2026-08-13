@@ -59,4 +59,26 @@ final class RouterTest extends TestCase
 
         $this->assertNull(matchRoute($routes, 'POST', '/products/7'));
     }
+
+    // ─── Реальная конфигурация маршрутов (Таск 5) ────────────────────────
+
+    public function testRealRoutesResolveAdminAndVendorPanel(): void
+    {
+        $routes = loadRoutes(ROOT_PATH . '/config/routes.php');
+
+        $admin = matchRoute($routes, 'GET', '/admin');
+        $this->assertNotNull($admin);
+        $this->assertSame(['Admin\DashboardController', 'index'], $admin['handler']);
+
+        $vendor = matchRoute($routes, 'GET', '/vendor-panel');
+        $this->assertNotNull($vendor);
+        $this->assertSame(['VendorPanelController', 'index'], $vendor['handler']);
+    }
+
+    public function testTemporaryAdminPreviewRouteRemoved(): void
+    {
+        $routes = loadRoutes(ROOT_PATH . '/config/routes.php');
+
+        $this->assertNull(matchRoute($routes, 'GET', '/admin/_preview'));
+    }
 }

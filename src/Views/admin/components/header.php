@@ -15,11 +15,11 @@ $adminName = $adminName ?? 'Администратор';
     <div class="header-wrapper m-0">
         <div class="header-logo-wrapper p-0">
             <div class="logo-wrapper">
-                <a class="admin-logo" href="/admin/_preview">Сдоба</a>
+                <a class="admin-logo" href="/admin">Сдоба</a>
             </div>
             <div class="toggle-sidebar">
                 <i class="status_toggle middle sidebar-toggle" data-feather="align-center"></i>
-                <a class="admin-logo" href="/admin/_preview">Сдоба</a>
+                <a class="admin-logo" href="/admin">Сдоба</a>
             </div>
         </div>
 
