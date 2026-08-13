@@ -1,0 +1,49 @@
+/**
+ * Свой CSS-слой поверх темы Fastkart. Строго BEM для собственных классов.
+ * Классы темы (theme-color-1, header-top, main-nav) не трогаем — только
+ * переопределяем через свои правила при необходимости.
+ *
+ * Цвет темы вынесен в переменную: карамельный #d99f46 (в наборе темы —
+ * theme-color-1). Пересборка не нужна.
+ */
+
+:root {
+    --theme-color: #d99f46;
+    --theme-color-rgb: 217, 159, 70;
+}
+
+/* Пустой main на витрине-заглушке не должен схлопывать подвал к шапке. */
+main {
+    min-height: 40vh;
+}
+
+/* Вводный текст на главной-заглушке. */
+.home-intro__lead {
+    max-width: 640px;
+}
+
+/* Текстовый логотип «Сдоба» — свой бренд поверх позиционирования темы.
+   Скрипт-шрифт Pacifico (self-hosted). Цвет фиксируем и на :hover/:focus,
+   иначе ссылка уходит в дефолтный синий. */
+.site-logo {
+    font-family: 'Pacifico', cursive;
+    font-size: clamp(1.75rem, 1rem + 2.2vw, 2.5rem);
+    font-weight: 400;
+    line-height: 1;
+    color: var(--theme-color);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.site-logo:hover,
+.site-logo:focus {
+    color: var(--theme-color);
+    text-decoration: none;
+}
+
+/* Пункты меню без подменю — убираем каретку-стрелку темы (.nav-link::before —
+   иконка Font Awesome, тема вешает её на каждый nav-link). Утилитарный
+   override, поэтому !important оправдан. */
+.nav-link--plain::before {
+    content: none !important;
+}
