@@ -1,0 +1,54 @@
+/**
+ * Свой CSS-слой админки поверх темы Fastkart (back-end). Строго BEM для
+ * собственных классов. Классы темы (page-wrapper, sidebar-wrapper, main-tiles)
+ * не трогаем — только переопределяем через свои правила при необходимости.
+ *
+ * Витрина и админка — независимые фронты: этот файл к витрине не подключается,
+ * у неё свой /assets/css/app.css.
+ *
+ * Загружается ПОСЛЕ style.css темы, поэтому переопределяет её :root-переменные.
+ */
+
+/* Цвет темы админки — карамельный #d99f46 вместо дефолтного зелёного #0da487
+   темы. Пересборка не нужна. */
+:root {
+    --theme-color: #d99f46;
+    --theme-color-rgb: 217, 159, 70;
+}
+
+/* Тема набрана в Public Sans (без кириллицы, подключался с Google CDN —
+   запрещено). Заменяем на self-hosted Exo 2 с полной кириллицей. */
+body,
+.font-roboto {
+    font-family: 'Exo 2', sans-serif;
+}
+
+/* Текстовый логотип «Сдоба» — свой бренд вместо картинок-логотипов темы
+   (Fastkart). Каскад цвета: тема красит ссылки, поэтому фиксируем цвет и на
+   :hover/:focus. Карамельный --theme-color читается и на светлой шапке, и на
+   тёмном сайдбаре. */
+.admin-logo {
+    font-family: 'Exo 2', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--theme-color);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.admin-logo:hover,
+.admin-logo:focus {
+    color: var(--theme-color);
+    text-decoration: none;
+}
+
+/* Монограмма для свёрнутого сайдбара (.logo-icon-wrapper). */
+.admin-logo--icon {
+    font-size: 1.25rem;
+}
+
+/* Пустой page-body на странице-заглушке не должен схлопывать подвал к шапке. */
+.admin-preview {
+    min-height: 50vh;
+}

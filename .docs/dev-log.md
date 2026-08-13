@@ -84,3 +84,53 @@ Fastkart.
 консоль, 320px). Затем Фаза 0, Таск 3 — layout админки.
 
 ---
+
+**Дата:** 13.08.2026
+**Что сделано:** Фаза 0, Таск 3 — layout админки на теме Fastkart (back-end).
+
+- Перенесён независимый вендорный слой админки в
+  `public/assets/vendor/admin/` (css/js/fonts/images) — отдельный от
+  витрины набор (свой Bootstrap, иконки, ApexCharts-ядро). Общего слоя
+  с витриной нет, как и требует архитектура.
+- Из головы макета взяты только ассеты каркаса: bootstrap, иконочные
+  CSS (linearicon, font-awesome, themify, remixicon, feather-icon),
+  scrollbar, animate, ratio, style. JS каркаса: jquery, bootstrap,
+  feather, simplebar+custom, config, tooltip-init, sidebar-menu,
+  sidebareffect, script + ядро ApexCharts (moment + apex-chart).
+  Плагины контента дашборда (slick, vector-map, notify, customizer,
+  init-скрипты графиков, DataTables) не переносились — Фаза 5.
+- `@font-face` вычищены от `.eot/.ttf/.svg` в linearicon/remixicon/
+  font-awesome/themify; `linearicon.css` ссылался на внешний CDN
+  `cdn.linearicons.com` — переписан на локальные woff2/woff.
+- Созданы `src/Views/admin/layout.php`, `components/header.php`,
+  `components/sidebar.php` (локализованы на русский, `lang="ru"`),
+  свой `public/assets/css/admin.css` (`--theme-color:#d99f46`) и
+  `public/assets/js/admin.js` (ES-модуль-заглушка).
+- Сайдбар — полное меню-каркас разделов админки; активен только
+  «Дашборд» (временно → `/admin/_preview`), остальные пункты на `#`.
+  Пункты вырезанных фич (мультиязычность/валюты) не переносились.
+- Проверка: временный `AdminPreviewController` + роут `GET /admin/_preview`
+  (оба удаляются в Таске 5). Рендер через встроенный сервер PHP — 200,
+  все 33 ассета + шрифты отдают 200, ноль ссылок на CDN, `app.log`
+  без новых ошибок.
+
+Решения и отклонения:
+- **Шрифт body заменён с «Public Sans» на self-hosted «Exo 2».** Макет
+  тянул Public Sans с Google CDN (запрещено), а у Public Sans нет
+  кириллицы — весь текст админки русский. Exo 2 уже self-hosted для
+  витрины и покрывает кириллицу; её 5 woff2 (по сабсетам) скопированы
+  в `vendor/admin/fonts/exo2/`, `fonts.css` сгенерирован из блоков
+  витрины с переписанным путём. Независимость фронтов сохранена
+  (копия, а не общий файл). Переопределение — в `admin.css`.
+- Из шапки убран нефункциональный переключатель тёмной темы (завязан
+  на `customizer.js`, вне скоупа); мини-поиск оставлен как статический
+  input (typeahead-плагин не переносился).
+- Логотипы-картинки Fastkart заменены на текстовый бренд «Сдоба» (класс
+  `.admin-logo` в `admin.css`, Exo 2, `--theme-color`; монограмма «С»
+  для свёрнутого сайдбара). Неиспользуемые PNG темы (`logo/1.png` и др.)
+  удалены — в шапке/сайдбаре на них ссылок больше нет.
+
+**Что следующее:** ручная проверка DoD Таск 3 в браузере (консоль JS,
+внешний вид, 320px). Затем Фаза 0, Таск 4 — авторизация.
+
+---
