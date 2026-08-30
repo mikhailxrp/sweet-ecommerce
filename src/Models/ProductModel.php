@@ -388,3 +388,90 @@ function incrementViewsCount(int $productId): void
     $stmt = getPdo()->prepare('UPDATE products SET views_count = views_count + 1 WHERE id = :productId');
     $stmt->execute(['productId' => $productId]);
 }
+
+// ─── Поиск (Таск 6) ──────────────────────────────────────────────────────
+
+/**
+ * SQL-условие и bind-значение для уже выбранной стратегии поиска
+ * (Core/catalog.php: resolveSearchStrategy()). `fulltext` — `MATCH ...
+ * AGAINST` в `NATURAL LANGUAGE MODE` (не требует экранирования спецсимволов
+ * запроса, в отличие от BOOLEAN MODE); `prefix` — `LIKE 'запрос%'` для 1–2
+ * символов, которые FULLTEXT-индекс с `innodb_ft_min_token_size = 3` не
+ * находит (см. `database.md`). `'%'` дописывается здесь, в PHP, а не в SQL.
+ *
+ * @return array{sql:string,value:string}
+ */
+function searchConditionFor(string $strategy, string $query): array
+{
+    return $strategy === 'prefix'
+        ? ['sql' => 'p.name LIKE :query', 'value' => $query . '%']
+        : ['sql' => 'MATCH(p.name, p.description) AGAINST(:query IN NATURAL LANGUAGE MODE)', 'value' => $query];
+}
+
+/**
+ * Поиск товаров по названию и описанию. `strategy = 'empty'` возвращает []
+ * без обращения к БД. Форма строки — как у findByCategoryIds(), совместимо
+ * с components/product-card.php.
+ *
+ * @return list<array{
+ *     id:int,name:string,slug:string,price:string,old_price:?string,
+ *     has_variants:int,stock_quantity:int,vendor_name:string,
+ *     image_path:string,image_alt:string
+ * }>
+ */
+function searchProducts(string $strategy, string $query, string $orderBySql, int $limit, int $offset): array
+{
+    if ($strategy === 'empty') {
+        return [];
+    }
+
+    $condition = searchConditionFor($strategy, $query);
+
+    $stmt = getPdo()->prepare(
+        "SELECT p.id, p.name, p.slug, p.price, p.old_price, p.has_variants, p.stock_quantity,
+                v.name AS vendor_name, pi.path AS image_path, pi.alt AS image_alt
+         FROM products p
+         JOIN vendors v ON v.id = p.vendor_id AND v.status = 'approved'
+         JOIN product_images pi ON pi.product_id = p.id AND pi.is_main = 1
+         WHERE {$condition['sql']}
+             AND p.is_active = 1 AND p.moderation_status = 'approved'
+         ORDER BY {$orderBySql}
+         LIMIT :limit OFFSET :offset"
+    );
+    $stmt->bindValue('query', $condition['value'], \PDO::PARAM_STR);
+    $stmt->bindValue('limit', $limit, \PDO::PARAM_INT);
+    $stmt->bindValue('offset', $offset, \PDO::PARAM_INT);
+    $stmt->execute();
+
+    return array_map(
+        static function (array $row): array {
+            $row['id'] = (int) $row['id'];
+            $row['has_variants'] = (int) $row['has_variants'];
+            $row['stock_quantity'] = (int) $row['stock_quantity'];
+            return $row;
+        },
+        $stmt->fetchAll()
+    );
+}
+
+/** Число найденных товаров — для пагинации. `strategy = 'empty'` → 0 без обращения к БД. */
+function countSearchResults(string $strategy, string $query): int
+{
+    if ($strategy === 'empty') {
+        return 0;
+    }
+
+    $condition = searchConditionFor($strategy, $query);
+
+    $stmt = getPdo()->prepare(
+        "SELECT COUNT(*)
+         FROM products p
+         JOIN vendors v ON v.id = p.vendor_id AND v.status = 'approved'
+         WHERE {$condition['sql']}
+             AND p.is_active = 1 AND p.moderation_status = 'approved'"
+    );
+    $stmt->bindValue('query', $condition['value'], \PDO::PARAM_STR);
+    $stmt->execute();
+
+    return (int) $stmt->fetchColumn();
+}

@@ -50,13 +50,14 @@ declare(strict_types=1);
                         <div class="search-box">
                             <form action="/search" method="get" role="search">
                                 <div class="input-group">
-                                    <input type="search" name="q" class="form-control"
+                                    <input type="search" name="q" class="form-control" autocomplete="off"
                                         placeholder="Поиск по товарам..." aria-label="Поиск по товарам">
                                     <button class="btn search-button-2" type="submit" aria-label="Искать">
                                         <i data-feather="search"></i>
                                     </button>
                                 </div>
                             </form>
+                            <div class="search-suggestions" id="searchSuggestions" hidden></div>
                         </div>
                     </div>
 
@@ -260,3 +261,5 @@ declare(strict_types=1);
         </div>
     </div>
 </header>
+
+<script type="module" src="/assets/js/search.js"></script>

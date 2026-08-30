@@ -277,3 +277,36 @@ function resolveView(string $input): string
 {
     return trim($input) === 'list' ? 'list' : 'grid';
 }
+
+// ─── Поиск (Таск 6) ──────────────────────────────────────────────────────
+
+/** Максимальная длина поискового запроса — защита от абсурдно длинного ввода. */
+const SEARCH_QUERY_MAX_LENGTH = 100;
+
+/**
+ * Нормализует сырой запрос из `?q=`: обрезает пробелы по краям, схлопывает
+ * повторные пробелы внутри в один, обрезает длину. Без обращения к БД.
+ */
+function normalizeSearchQuery(string $raw): string
+{
+    $normalized = trim((string) preg_replace('/\s+/u', ' ', $raw));
+
+    return mb_substr($normalized, 0, SEARCH_QUERY_MAX_LENGTH);
+}
+
+/**
+ * Выбирает стратегию поиска по длине уже нормализованного запроса:
+ * `'empty'` — пустой запрос, `'prefix'` — 1–2 символа (FULLTEXT-индекс с
+ * `innodb_ft_min_token_size = 3` их не находит, см. `database.md`),
+ * `'fulltext'` — 3+ символов.
+ */
+function resolveSearchStrategy(string $query): string
+{
+    $length = mb_strlen($query);
+
+    return match (true) {
+        $length === 0 => 'empty',
+        $length < 3   => 'prefix',
+        default       => 'fulltext',
+    };
+}
