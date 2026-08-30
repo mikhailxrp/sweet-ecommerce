@@ -72,3 +72,9 @@ main {
 .filters-block .range-slider {
     padding: 0.5rem 0.25rem 1rem;
 }
+
+/* «Похожие товары» на карточке товара (Таск 5) — section-b-space задаёт
+   только отступ снизу, сверху блок прилипал к вкладке характеристик. */
+.related-products {
+    margin-top: 20px;
+}
