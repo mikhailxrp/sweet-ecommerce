@@ -47,3 +47,28 @@ main {
 .nav-link--plain::before {
     content: none !important;
 }
+
+/* Плитка категории на /catalog («Все категории»): у исходных фото разное
+   соотношение сторон, из-за чего название категории оказывалось на
+   разной высоте между карточками одного ряда. Фиксируем высоту блока
+   под картинку — название теперь всегда на одном уровне. object-fit:
+   contain, не cover: фото почти квадратные на белом фоне, cover обрезал
+   бы верх (ленту, шапки капкейков) у одних фото сильнее, чем у других;
+   contain показывает фото целиком, а поля по бокам сливаются с белым
+   фоном карточки. */
+.category-card__image {
+    --category-card-image-height: 260px;
+    height: var(--category-card-image-height);
+    object-fit: contain;
+    padding: 1rem;
+}
+
+/* Блок фильтров сайдбара категории (Таск 4) — отступ от дерева категорий
+   над ним, разметка формы и слайдера — вендорный custom-accordion темы. */
+.filters-block {
+    margin-top: 1.5rem;
+}
+
+.filters-block .range-slider {
+    padding: 0.5rem 0.25rem 1rem;
+}

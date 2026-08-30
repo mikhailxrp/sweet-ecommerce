@@ -97,4 +97,172 @@ final class CatalogTest extends TestCase
     {
         $this->assertSame('', buildQuery(['page' => 3], ['page' => null]));
     }
+
+    // ─── parseFilters() ─────────────────────────────────────────────────
+
+    public function testParseFiltersReturnsDefaultsForEmptyQuery(): void
+    {
+        $this->assertSame(
+            [
+                'price_min'     => null,
+                'price_max'     => null,
+                'vendor_ids'    => [],
+                'in_stock'      => false,
+                'weight_bucket' => null,
+                'sugar_free'    => false,
+                'min_rating'    => null,
+            ],
+            parseFilters([])
+        );
+    }
+
+    public function testParseFiltersAcceptsValidPriceRange(): void
+    {
+        $filters = parseFilters(['price_min' => '100', 'price_max' => '500']);
+
+        $this->assertSame('100.00', $filters['price_min']);
+        $this->assertSame('500.00', $filters['price_max']);
+    }
+
+    public function testParseFiltersSwapsInvertedPriceRange(): void
+    {
+        $filters = parseFilters(['price_min' => '500', 'price_max' => '100']);
+
+        $this->assertSame('100.00', $filters['price_min']);
+        $this->assertSame('500.00', $filters['price_max']);
+    }
+
+    public function testParseFiltersRejectsNonNumericPrice(): void
+    {
+        $filters = parseFilters(['price_min' => 'abc', 'price_max' => 'DROP TABLE products;--']);
+
+        $this->assertNull($filters['price_min']);
+        $this->assertNull($filters['price_max']);
+    }
+
+    public function testParseFiltersRejectsNegativePrice(): void
+    {
+        $this->assertNull(parseFilters(['price_min' => '-50'])['price_min']);
+    }
+
+    public function testParseFiltersKeepsOnlyPositiveIntegerVendorIds(): void
+    {
+        $filters = parseFilters(['vendor' => ['3', '7', 'abc', '-1', '0', 3]]);
+
+        $this->assertSame([3, 7], $filters['vendor_ids']);
+    }
+
+    public function testParseFiltersIgnoresVendorWhenNotArray(): void
+    {
+        $this->assertSame([], parseFilters(['vendor' => '99999999999'])['vendor_ids']);
+    }
+
+    public function testParseFiltersAcceptsInStockFlag(): void
+    {
+        $this->assertTrue(parseFilters(['in_stock' => '1'])['in_stock']);
+    }
+
+    public function testParseFiltersRejectsNonStrictInStockValue(): void
+    {
+        $this->assertFalse(parseFilters(['in_stock' => 'yes'])['in_stock']);
+    }
+
+    public function testParseFiltersAcceptsWhitelistedWeightBucket(): void
+    {
+        $this->assertSame('500to1000', parseFilters(['weight' => '500to1000'])['weight_bucket']);
+    }
+
+    public function testParseFiltersRejectsUnknownWeightBucket(): void
+    {
+        $this->assertNull(parseFilters(['weight' => 'huge'])['weight_bucket']);
+    }
+
+    public function testParseFiltersAcceptsSugarFreeFlag(): void
+    {
+        $this->assertTrue(parseFilters(['sugar_free' => '1'])['sugar_free']);
+    }
+
+    public function testParseFiltersTakesMinimumOfCheckedRatings(): void
+    {
+        $this->assertSame(3, parseFilters(['rating' => ['5', '3', '4']])['min_rating']);
+    }
+
+    public function testParseFiltersRejectsOutOfRangeRating(): void
+    {
+        $this->assertNull(parseFilters(['rating' => ['99', '0']])['min_rating']);
+    }
+
+    // ─── filterConditions() ─────────────────────────────────────────────
+
+    public function testFilterConditionsReturnsEmptyForNoFilters(): void
+    {
+        $this->assertSame(['sql' => [], 'params' => []], filterConditions(parseFilters([])));
+    }
+
+    public function testFilterConditionsBuildsPriceRangeCondition(): void
+    {
+        $conditions = filterConditions(parseFilters(['price_min' => '100', 'price_max' => '500']));
+
+        $this->assertSame(['p.price >= ?', 'p.price <= ?'], $conditions['sql']);
+        $this->assertSame(
+            [
+                ['value' => '100.00', 'type' => \PDO::PARAM_STR],
+                ['value' => '500.00', 'type' => \PDO::PARAM_STR],
+            ],
+            $conditions['params']
+        );
+    }
+
+    public function testFilterConditionsBuildsVendorInClauseWithBoundParams(): void
+    {
+        $conditions = filterConditions(parseFilters(['vendor' => ['3', '7']]));
+
+        $this->assertSame(['p.vendor_id IN (?,?)'], $conditions['sql']);
+        $this->assertSame(
+            [
+                ['value' => 3, 'type' => \PDO::PARAM_INT],
+                ['value' => 7, 'type' => \PDO::PARAM_INT],
+            ],
+            $conditions['params']
+        );
+    }
+
+    public function testFilterConditionsAddsInStockClauseWithoutParams(): void
+    {
+        $conditions = filterConditions(parseFilters(['in_stock' => '1']));
+
+        $this->assertCount(1, $conditions['sql']);
+        $this->assertStringContainsString('has_variants', $conditions['sql'][0]);
+        $this->assertSame([], $conditions['params']);
+    }
+
+    public function testFilterConditionsAddsSugarFreeClause(): void
+    {
+        $this->assertSame(['p.is_sugar_free = 1'], filterConditions(parseFilters(['sugar_free' => '1']))['sql']);
+    }
+
+    public function testFilterConditionsAddsMinRatingClauseWithBoundParam(): void
+    {
+        $conditions = filterConditions(parseFilters(['rating' => ['4']]));
+
+        $this->assertSame(['p.rating_avg >= ?'], $conditions['sql']);
+        $this->assertSame([['value' => 4, 'type' => \PDO::PARAM_INT]], $conditions['params']);
+    }
+
+    // ─── resolveView() ──────────────────────────────────────────────────
+
+    public function testResolveViewAcceptsList(): void
+    {
+        $this->assertSame('list', resolveView('list'));
+    }
+
+    public function testResolveViewFallsBackToGridForUnknownValue(): void
+    {
+        $this->assertSame('grid', resolveView('whatever'));
+    }
+
+    public function testResolveViewFallsBackToGridForEmptyString(): void
+    {
+        $this->assertSame('grid', resolveView(''));
+    }
 }

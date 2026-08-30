@@ -44,8 +44,9 @@ ob_start();
             <?php foreach ($categories as $category): ?>
                 <div class="col-xxl-3 col-lg-4 col-sm-6">
                     <a href="/catalog/<?= e($category['slug']) ?>" class="card h-100 text-center text-decoration-none">
-                        <img src="<?= e('/uploads/' . $category['image_path']) ?>" class="card-img-top"
-                            alt="<?= e($category['name']) ?>" loading="lazy">
+                        <img src="<?= e('/uploads/' . $category['image_path']) ?>"
+                            class="card-img-top category-card__image" alt="<?= e($category['name']) ?>"
+                            loading="lazy">
                         <div class="card-body">
                             <h3 class="card-title h6 mb-1"><?= e($category['name']) ?></h3>
                             <p class="card-text text-content small mb-0">
