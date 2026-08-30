@@ -80,4 +80,54 @@ final class FunctionsTest extends TestCase
         $this->assertNotSame($oldId, session_id());
         $this->assertArrayNotHasKey('csrf_token', $_SESSION);
     }
+
+    public function testSlugifyTransliteratesCyrillic(): void
+    {
+        $this->assertSame('medovik', slugify('Медовик'));
+    }
+
+    public function testSlugifyLowercasesLatinInput(): void
+    {
+        $this->assertSame('cupcakestudio', slugify('CupcakeStudio'));
+    }
+
+    public function testSlugifyCollapsesPunctuationAndSpacesIntoOneHyphen(): void
+    {
+        $this->assertSame('tort-edinorog', slugify('Торт «Единорог»'));
+    }
+
+    public function testSlugifyKeepsDigits(): void
+    {
+        $this->assertSame('nabor-makarun-12-sht', slugify('Набор макарун (12 шт)'));
+    }
+
+    public function testSlugifyTrimsLeadingAndTrailingHyphens(): void
+    {
+        $this->assertSame('privet', slugify('  привет!!!  '));
+    }
+
+    public function testSlugifyReturnsEmptyStringForOnlyPunctuation(): void
+    {
+        $this->assertSame('', slugify('---'));
+    }
+
+    public function testFormatPriceAddsRubleSignAndSpacedThousands(): void
+    {
+        $this->assertSame('12 345 ₽', formatPrice('12345.00'));
+    }
+
+    public function testFormatPriceDropsKopecksFromWholeAmount(): void
+    {
+        $this->assertSame('90 ₽', formatPrice('90.00'));
+    }
+
+    public function testFormatPriceRoundsFractionalKopecks(): void
+    {
+        $this->assertSame('1 251 ₽', formatPrice('1250.50'));
+    }
+
+    public function testFormatPriceHandlesZero(): void
+    {
+        $this->assertSame('0 ₽', formatPrice('0.00'));
+    }
 }

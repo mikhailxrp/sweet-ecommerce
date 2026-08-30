@@ -1,87 +1,122 @@
 # Current Task
 
 ## Фаза
-Phase 0 — Фундамент
+Phase 1 — Каталог
 
 ## Задача
-`customer`/гость не попадают в `/admin` и `/vendor-panel` (гость →
-`/login`, чужая роль → 403); админ открывает `/admin` с дашбордом-
-заглушкой в теме; главная `/` — пустая витрина. Временный
-`/admin/_preview` из Таска 3 заменяется на настоящий `/admin`.
+`/catalog/{slug}` отдаёт товары категории **и её подкатегорий** по 24 на
+страницу, с сортировкой, хлебными крошками и сайдбаром-навигацией по
+дереву категорий.
+
+Источник вёрстки: `example-template/front-end/shop-left-sidebar.html`.
 
 ## Scope — что трогаем
 
-**Гейт:**
-- [ ] `src/Core/auth.php` — добавить `requireRole(string $role)`: гость →
-      `redirect('/login')`; роль ≠ требуемой → `http_response_code(403)`
-      + `render('errors/403')` + `exit`. Читает `$_SESSION['user_role']`
-      (кладёт `loginUser`). Строгая проверка одной роли.
+**Чистые хелперы + тесты:**
+- [x] `src/Core/catalog.php` — создать: `resolveSort()` (белый список
+      ключей → фиксированный `ORDER BY`-фрагмент), `resolvePage()`
+      (нормализация номера страницы), `totalPages()`, `buildQuery()`
+      (URL с заменой одного query-параметра, остальные сохраняются)
+- [x] `tests/Unit/CatalogTest.php` — создать: тесты всех четырёх функций
 
-**Админка (замена временной заглушки на настоящую):**
-- [ ] `src/Controllers/Admin/DashboardController.php` — создать:
-      `index()` → `requireRole('admin')` → `render('admin/dashboard')`
-- [ ] `src/Views/admin/dashboard.php` — создать: дашборд-заглушка на
-      admin-layout (контент из нынешнего `_preview.php`, заголовок
-      «Дашборд»)
-- [ ] `src/Views/admin/components/header.php` — изменить: 2 ссылки
-      логотипа `/admin/_preview` → `/admin`
-- [ ] `src/Views/admin/components/sidebar.php` — изменить: ссылки
-      логотипа/монограммы и пункт «Дашборд» `/admin/_preview` → `/admin`;
-      поправить комментарий
-- [ ] удалить `src/Controllers/AdminPreviewController.php` и
-      `src/Views/admin/_preview.php` (временные из Таска 3)
+**Модели:**
+- [x] `src/Models/SettingsModel.php` — создать:
+      `getSetting(string $key, string $default): string`. Нужна, чтобы
+      `products_per_page` жила только в `settings` и не дублировалась
+      константой в коде
+- [x] `src/Models/CategoryModel.php` — изменить: `findBySlug()` (вместе с
+      родителем — для хлебных крошек), `findChildIds()` (id потомков для
+      листинга), `findTreeForSidebar()` (корневые + подкатегории)
+- [x] `src/Models/ProductModel.php` — изменить:
+      `findByCategoryIds(array $ids, string $orderBy, int $limit, int $offset)`
+      + `countByCategoryIds(array $ids)`. `IN (?, ?, …)` строится по числу
+      id, значения — только через bound-параметры
 
-**Гейт кондитера (заглушка-guard):**
-- [ ] `src/Controllers/VendorPanelController.php` — создать: `index()` →
-      `requireRole('vendor')` → `render('shop/vendor-panel')`
-- [ ] `src/Views/shop/vendor-panel.php` — создать: минимальная заглушка
-      «Раздел в разработке» на shop-layout (кабинет кондитера — Фаза 7)
+**Контроллер и вью:**
+- [x] `src/Controllers/CatalogController.php` — изменить: добавить
+      `category(string $slug)`
+- [x] `src/Views/shop/catalog/category.php` — создать: сайдбар с деревом
+      категорий (активная подсвечена), dropdown сортировки, сетка на
+      `product-card.php`, пагинация
+- [x] `src/Views/shop/components/pagination.php` — создать: принимает
+      `$currentPage` и `$totalPages`, ссылки сохраняют все текущие
+      query-параметры
 
-**403:**
-- [ ] `src/Views/errors/403.php` — создать: страница «Доступ запрещён»
-      на shop-layout + ссылка на `/`
-
-**Маршруты:**
-- [ ] `config/routes.php` — убрать `/admin/_preview`; добавить
-      `GET /admin` → `['Admin\DashboardController','index']`,
-      `GET /vendor-panel` → `['VendorPanelController','index']`
-
-**Витрина (уже готово из Таска 2 — проверить, правок не требуется):**
-- [ ] `src/Controllers/HomeController.php` + `src/Views/shop/home.php` —
-      уже отдают пустую витрину; не меняем
-
-**Тест:**
-- [ ] `tests/Unit/RouterTest.php` — изменить: добавить кейсы, грузящие
-      реальный `config/routes.php` (`loadRoutes`): `GET /admin` и
-      `GET /vendor-panel` резолвятся в нужные хендлеры, `/admin/_preview`
-      больше не матчится
+**Маршрут:**
+- [x] `config/routes.php` — изменить: добавить `GET /catalog/{slug}` →
+      `['CatalogController', 'category']`
 
 ## Out of scope — не трогаем
-- Наполнение дашборда (KPI, графики ApexCharts, таблицы) — Фаза 5
-- Реальный кабинет кондитера (`seller-dashboard`, свой layout) — Фаза 7
-- Отдельный вход в админку `/admin/login` — Фаза 5
-- Личный кабинет покупателя, редирект после логина по роли — оставляем
-  `/` (Таск 4)
-- `redirectIfAuthenticated()` в `functions.php` (ведёт на `/dashboard`) —
-  сейчас не используется (Таск 4 редиректит на `/` напрямую);
-  предсуществующий мёртвый хелпер, не трогаю, только упоминаю
-- 404-страница темы (`404.html`) — отдельно, не в этом таске
+- Фильтры сайдбара (цена, кондитер, наличие, вес, «без сахара»,
+  рейтинг) и переключатель вида `?view=grid|list` — Таск 4; они лягут в
+  ту же левую колонку
+- `/product/{slug}` — Таск 5. Ссылки с карточек уже ведут туда и до
+  Таска 5 отдают 404 — это ожидаемо, чинить здесь не нужно
+- Поиск и подсказки — Таск 6
+- Главная и Quick View — Таск 7
+- Хардкод категорий в мега-меню шапки (`components/header.php`, все
+  пункты ведут на `/catalog`) — динамическое меню в этот таск не входит
+- CRUD настроек в админке — Фаза 6; `SettingsModel` здесь только на
+  чтение, без записи и кэша
+- `/catalog` (Таск 2) — работает, не трогаем
+
+## Решения таска
+
+**Сортировка — строго по белому списку.** `?sort=` мапится в
+фиксированный `ORDER BY`-фрагмент из массива-справочника; неизвестное
+значение тихо падает на дефолт («популярные»), а не отдаёт ошибку.
+Строка из URL никогда не склеивается с SQL — в запрос попадает только
+заранее известный фрагмент.
+
+**Товары подкатегорий.** `CategoryModel::findChildIds()` отдаёт id самой
+категории плюс её потомков, `ProductModel` строит `IN (?, ?, …)` по числу
+id. Запрос ложится на индекс `(category_id, is_active, moderation_status)`
+из `database.md`. Вложенность в проекте одноуровневая, рекурсия по
+дереву не нужна.
+
+**`products_per_page` — только из `settings`.** Значение уже засеяно
+`install.php`; константа в коде стала бы второй копией того же факта
+(запрещено `CLAUDE.md`), и настройка из админки в Фазе 6 не работала бы.
+
+**Пагинация сохраняет query-строку целиком.** Иначе в Таске 4 переход на
+вторую страницу сбрасывал бы выбранные фильтры.
+
+**Пагинацию не проверить на демо-данных при лимите 24.** В самой большой
+категории «Торты» 10 товаров (4 своих + 3 + 3 из подкатегорий),
+в остальных 4–6. Ручная проверка делается временным понижением лимита до
+3 с последующим возвратом к 24; постоянная защита — unit-тесты на
+`resolvePage()` и `totalPages()`.
 
 ## Definition of Done
-- [ ] Гость на `/admin` и `/vendor-panel` → редирект на `/login`
-- [ ] Авторизованный `customer` на `/admin` и `/vendor-panel` → 403
-      (страница «Доступ запрещён», HTTP 403)
-- [ ] Админ на `/admin` → дашборд-заглушка в admin-теме (200)
-- [ ] Админ на `/vendor-panel` → 403 (он не `vendor`) — проверка строгая
-      по роли
-- [ ] Главная `/` открывается пустой витриной (200)
-- [ ] Временный `/admin/_preview` больше не отвечает (404), файлы-
-      заглушки удалены
-- [ ] `composer test` зелёный (новые кейсы RouterTest на `/admin`,
-      `/vendor-panel`)
-- [ ] Ассеты локальные, консоль браузера чистая, `storage/logs/app.log`
-      без ошибок и warnings, корректно на 320px
-- [ ] Проверить `.docs/dod-global.md`
+- [x] `/catalog/torty` показывает 10 товаров — 4 своих плюс по 3 из
+      «Свадебных» и «Детских»: товары подкатегорий попадают в листинг
+      родителя
+- [x] `/catalog/torty-svadebnye` (подкатегория) открывается и показывает
+      свои 3 товара
+- [x] Сортировка «популярные / новые / цена ↑ / цена ↓ / рейтинг» меняет
+      порядок товаров; выбранный пункт отмечен в dropdown
+- [x] `?sort=<произвольная строка>` → дефолтная сортировка, без ошибки и
+      без попадания значения в SQL
+- [x] Хлебные крошки (у подкатегории — с родителем), название и описание
+      категории, счётчик найденного
+- [x] Несуществующий slug и категория с `is_active = 0` → 404-страница в
+      теме, HTTP 404
+- [x] Пагинация (проверяется временным понижением лимита до 3, затем
+      возврат к 24): появляется вторая страница, `?page=999` → первая,
+      `?page=0` и `?page=abc` → первая, переход между страницами
+      сохраняет активный `?sort=`
+- [x] Число товаров на странице берётся из `settings.products_per_page`,
+      в коде не продублировано
+- [x] `LIMIT` / `OFFSET` передаются через `bindValue(..., PDO::PARAM_INT)`
+      (эмуляция prepared statements выключена в `Database.php`)
+- [x] Сайдбар: дерево категорий, активная подсвечена; на 320px не ломает
+      вёрстку
+- [x] SQL только в Models; весь вывод в Views через `e()`
+- [x] `composer test` зелёный: unit-тесты на `resolveSort()`,
+      `resolvePage()`, `totalPages()`, `buildQuery()`
+- [x] Консоль браузера чистая, `storage/logs/app.log` без ошибок и
+      warnings после ручной проверки
+- [x] Проверить `.docs/dod-global.md`
 
 ## Важные правила
 - Следовать `CLAUDE.md`

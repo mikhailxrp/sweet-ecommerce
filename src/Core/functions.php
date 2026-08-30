@@ -148,6 +148,38 @@ function e(string $value): string
     return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+/**
+ * Форматирование цены для вывода: `1250.00` → `1 250 ₽`. Только для
+ * Views — деньги хранятся и считаются как DECIMAL-строка, float здесь
+ * используется исключительно ради отображения (см. general.md).
+ */
+function formatPrice(string $price): string
+{
+    return number_format((float) $price, 0, ',', ' ') . ' ₽';
+}
+
+/**
+ * Транслитерация кириллицы в ЧПУ-совместимый slug: нижний регистр,
+ * латиница, цифры и дефисы. Всё остальное схлопывается в один дефис.
+ */
+function slugify(string $text): string
+{
+    $map = [
+        'а' => 'a',  'б' => 'b',  'в' => 'v',  'г' => 'g',  'д' => 'd',
+        'е' => 'e',  'ё' => 'e',  'ж' => 'zh', 'з' => 'z',  'и' => 'i',
+        'й' => 'y',  'к' => 'k',  'л' => 'l',  'м' => 'm',  'н' => 'n',
+        'о' => 'o',  'п' => 'p',  'р' => 'r',  'с' => 's',  'т' => 't',
+        'у' => 'u',  'ф' => 'f',  'х' => 'h',  'ц' => 'c',  'ч' => 'ch',
+        'ш' => 'sh', 'щ' => 'sch', 'ъ' => '',  'ы' => 'y',  'ь' => '',
+        'э' => 'e',  'ю' => 'yu', 'я' => 'ya',
+    ];
+
+    $transliterated = strtr(mb_strtolower($text), $map);
+    $slug = preg_replace('/[^a-z0-9]+/', '-', $transliterated);
+
+    return trim((string) $slug, '-');
+}
+
 function input(string $key, mixed $default = ''): mixed
 {
     return $_POST[$key] ?? $_GET[$key] ?? $default;

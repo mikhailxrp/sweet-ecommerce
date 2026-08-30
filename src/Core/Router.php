@@ -92,9 +92,14 @@ function dispatch(array $routes): void
 
     $match = matchRoute($routes, $method, $path);
     if ($match === null) {
-        $statusCode = pathExistsInOtherMethod($routes, $method, $path) ? 405 : 404;
-        http_response_code($statusCode);
-        echo $statusCode === 405 ? '405 Method Not Allowed' : '404 Not Found';
+        if (pathExistsInOtherMethod($routes, $method, $path)) {
+            http_response_code(405);
+            echo '405 Method Not Allowed';
+            return;
+        }
+
+        http_response_code(404);
+        render('errors/404');
         return;
     }
 
